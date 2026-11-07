@@ -1,0 +1,6 @@
+# Pure-Python packages webconf needs that Alpine doesn't package (pip --require-hashes)
+mido==1.3.3 --hash=sha256:01033c9b10b049e4436fca2762194ca839b09a4334091dd3c34e7f4ae674fd8a
+tornadostreamform==0.2.2 --hash=sha256:3e6dbad4e8e6374495b247f4e1b4629827e122e318cd485f309465b033658c3d
+tornado_xstatic==0.3 --hash=sha256:29aac34f77105275a9dcf75ef7ee7ead0458596758fc63bbc0f256a33b5ab15a
+XStatic==1.0.3 --hash=sha256:ff8f9c5132c400f2f308eb6c998ca5530899926ec71c89818ef46bc854e98989
+xstatic_term_js==0.0.7.1 --hash=sha256:3fca54e1e28f1700b4408e4ed225342eee874d44141e8a9bf10d783bae1b0add

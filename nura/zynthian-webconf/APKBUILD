@@ -1,0 +1,83 @@
+# zynthian-webconf (the web configuration) for postmarketOS/Nura, from its nura branch (tomita with
+# the port changes: zynthian-ui's desktop environment, paths, login as the device user, no root).
+#
+# Built from a checkout of zynthian-webconf (nura branch):
+#   pmbootstrap build --src=/path/to/zynthian-webconf zynthian-webconf
+# (zynthian-ui's nura/deploy.sh zynthian-webconf does that). The Python packages Alpine doesn't
+# have (requirements.txt, pinned with hashes) are installed in build(): network (options=net),
+# as --src skips $source.
+#
+# Runs as a systemd user service in the device user's session, on port 8080
+# (http://<device>.local:8080, announced with avahi), login with that user's password.
+pkgname=zynthian-webconf
+pkgver=2610_git20261107
+pkgrel=0
+pkgdesc="zynthian synthesizer platform: web configuration"
+url="https://github.com/zynthian/zynthian-webconf"
+arch="noarch"
+license="GPL-3.0-or-later"
+options="net !check"
+# zynthian-ui (it imports zynthian's modules) not in depends: pmbootstrap's cross build would want
+# it for the host architecture too; the kiosk package pulls in both
+depends="
+	bash
+	python3
+	py3-bcrypt
+	py3-beautifulsoup4
+	py3-jsonpickle
+	py3-mutagen
+	py3-packaging
+	py3-pam
+	py3-pexpect
+	py3-psutil
+	py3-pyalsaaudio
+	py3-rarfile
+	py3-requests
+	py3-terminado
+	py3-tornado
+	py3-yaml
+	7zip
+	"
+makedepends="py3-pip"
+source="
+	requirements.txt
+	zynthian-webconf.service
+	zynthian-webconf.avahi
+	"
+builddir="$srcdir/$pkgname"
+
+# A file of the recipe directory: linked into $srcdir by abuild, or by pmbootstrap with --src
+_recipefile() {
+	if [ -e "$srcdir/$1" ]; then
+		echo "$srcdir/$1"
+	else
+		echo "$startdir/$1"
+	fi
+}
+
+build() {
+	rm -rf "$srcdir"/python
+	python3 -m pip install --no-deps --no-compile --require-hashes \
+		--target "$srcdir"/python -r "$(_recipefile requirements.txt)"
+	rm -rf "$srcdir"/python/bin
+}
+
+package() {
+	local dst="$pkgdir"/usr/share/zynthian/zynthian-webconf
+	mkdir -p "$dst"
+	# The tree without the recipes (mockup/ stays: the capture log routes serve from it)
+	tar -C "$builddir" --exclude=./.git --exclude=./nura --exclude=__pycache__ \
+		--exclude=./cert --exclude=./tmp -cf - . | tar -C "$dst" -xf -
+	cp -r "$srcdir"/python "$dst"/python
+	python3 -m compileall -q -d /usr/share/zynthian/zynthian-webconf "$dst"
+
+	install -Dm644 "$(_recipefile zynthian-webconf.service)" "$pkgdir"/usr/lib/systemd/user/zynthian-webconf.service
+	mkdir -p "$pkgdir"/usr/lib/systemd/user/default.target.wants
+	ln -s ../zynthian-webconf.service "$pkgdir"/usr/lib/systemd/user/default.target.wants/zynthian-webconf.service
+	install -Dm644 "$(_recipefile zynthian-webconf.avahi)" "$pkgdir"/etc/avahi/services/zynthian-webconf.service
+}
+sha512sums="
+d97a05856b81140437959c3622e793ed9b1de57917c57a5d498cd02050d5d5b2f2a38deed5f67b6cf6d5a19637fb46bceccee10d440c7173db625cdae299351a  requirements.txt
+0260443aa418c4527ea43e01680be6157afa012eda1f0d4f7861c979587860c5f2921384411d0873d9f4ae39c6ccf1403e89dc240df63be051d258d3984e1b2a  zynthian-webconf.service
+c6cf5aa521c78f2694f057443514fa06fa45d5d57a86d3a927ad8585c9b25419dabbd396337f13733c269612e64696710bf48cbef1de0fa59f05df005d9a7834  zynthian-webconf.avahi
+"
