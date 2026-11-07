@@ -249,6 +249,10 @@ class ExtraPacksHandler(ZynthianBasicHandler):
 
     def get_packages(self):
         self.pack_info = {}
+        # The zynthian-packages checkout (ZynthianOS); elsewhere maybe not there: no packs
+        if not os.path.isdir(self.packages_dir):
+            logging.warning(f"No extra packs: {self.packages_dir} not found")
+            return
         for item in sorted(Path(self.packages_dir).iterdir()):
             if item.is_dir() and item.name[0] != '.':
                 res = self.get_packages_from_cat(item)

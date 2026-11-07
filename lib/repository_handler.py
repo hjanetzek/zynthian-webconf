@@ -52,7 +52,19 @@ class RepositoryHandler(ZynthianConfigHandler):
 
     @tornado.web.authenticated
     def get(self, errors=None):
+        if not self.is_git_install():
+            super().get("Software Version", {
+                'ZYNTHIAN_MESSAGE': {
+                    'type': 'html',
+                    'content': "<div class='alert alert-info'>zynthian is installed from packages here, not from git checkouts: the software version comes with the system's package updates.</div>"
+                }
+            }, errors)
+            return
         super().get("Software Version", self.get_config_info(), errors)
+
+    def is_git_install(self):
+        """True where the zynthian repositories are git checkouts (ZynthianOS, a desktop checkout)"""
+        return os.path.exists(f"{self.zynthian_base_dir}/zynthian-ui/.git")
 
     @tornado.web.authenticated
     def post(self):
