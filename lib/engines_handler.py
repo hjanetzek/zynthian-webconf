@@ -28,11 +28,11 @@ import logging
 import tornado.web
 import zipfile
 import tarfile
-import py7zr
 import rarfile
 
 import os
 import shutil
+from subprocess import check_output
 
 from lib.upload_handler import TMP_DIR
 from lib.zynthian_config_handler import ZynthianBasicHandler
@@ -183,8 +183,14 @@ class EnginesHandler(ZynthianBasicHandler):
                 with zipfile.ZipFile(path, 'r') as zip:
                     zip.extractall(dpath)
             elif lpath.endswith('.7z'):
-                with py7zr.SevenZipFile(path, 'r') as sz:
-                    sz.extractall(dpath)
+                # py7zr (ZynthianOS) or the 7z program (py7zr needs five native extensions)
+                try:
+                    import py7zr
+                except ImportError:
+                    check_output(["7z", "x", "-y", f"-o{dpath}", path])
+                else:
+                    with py7zr.SevenZipFile(path, 'r') as sz:
+                        sz.extractall(dpath)
             elif lpath.endswith('.tar.gz'):
                 tar = tarfile.open(path, "r:gz")
                 tar.extractall(dpath)
