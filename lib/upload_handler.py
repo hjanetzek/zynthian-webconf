@@ -35,10 +35,22 @@ from lib.zynthian_websocket_handler import ZynthianWebSocketMessageHandler, Zynt
 # Upload Handling
 # ------------------------------------------------------------------------------
 
-TMP_DIR = "/zynthian/zynthian-webconf/tmp"
+def _tmp_dir():
+    """Upload directory: ZYNTHIAN_WEBCONF_TMP_DIR, else tmp/ in the webconf directory if that can be
+    written (a checkout, ZynthianOS), else in the system's temporary directory (packages)"""
+    if os.environ.get('ZYNTHIAN_WEBCONF_TMP_DIR'):
+        return os.environ['ZYNTHIAN_WEBCONF_TMP_DIR']
+    webconf_dir = os.environ.get('ZYNTHIAN_WEBCONF_DIR', "/zynthian/zynthian-webconf")
+    if os.access(webconf_dir, os.W_OK):
+        return f"{webconf_dir}/tmp"
+    import tempfile
+    return f"{tempfile.gettempdir()}/zynthian-webconf-{os.getuid()}"
+
+
+TMP_DIR = _tmp_dir()
 if os.path.isdir(TMP_DIR):
     shutil.rmtree(TMP_DIR, ignore_errors=True)
-os.mkdir(TMP_DIR)
+os.makedirs(TMP_DIR)
 
 MB = 1024 * 1024
 GB = 1024 * MB
