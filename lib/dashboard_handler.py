@@ -28,7 +28,6 @@ import re
 import sys
 import logging
 import tornado.web
-from distutils import util
 from subprocess import check_output, DEVNULL
 from lib.zynthian_config_handler import ZynthianBasicHandler
 
@@ -44,12 +43,13 @@ class DashboardHandler(ZynthianBasicHandler):
     @tornado.web.authenticated
     def get(self):
         # Get git info
-        git_info_zyncoder = self.get_git_info("/zynthian/zyncoder")
-        git_info_ui = self.get_git_info("/zynthian/zynthian-ui")
-        git_info_sys = self.get_git_info("/zynthian/zynthian-sys")
-        git_info_webconf = self.get_git_info("/zynthian/zynthian-webconf")
-        git_info_data = self.get_git_info("/zynthian/zynthian-data")
-        git_info_help = self.get_git_info("/zynthian/zynthian-help")
+        zdir = os.environ.get('ZYNTHIAN_DIR', "/zynthian")
+        git_info_zyncoder = self.get_git_info(os.environ.get('ZYNTHIAN_ZYNCODER_DIR', f"{zdir}/zyncoder"), "zyncoder")
+        git_info_ui = self.get_git_info(os.environ.get('ZYNTHIAN_UI_DIR', f"{zdir}/zynthian-ui"), "zynthian-ui")
+        git_info_sys = self.get_git_info(os.environ.get('ZYNTHIAN_SYS_DIR', f"{zdir}/zynthian-sys"), "zynthian-sys-config")
+        git_info_webconf = self.get_git_info(os.environ.get('ZYNTHIAN_WEBCONF_DIR', f"{zdir}/zynthian-webconf"), "zynthian-webconf")
+        git_info_data = self.get_git_info(os.environ.get('ZYNTHIAN_DATA_DIR', f"{zdir}/zynthian-data"), "zynthian-data")
+        git_info_help = self.get_git_info(os.environ.get('ZYNTHIAN_HELP_DIR', f"{zdir}/zynthian-help"), "zynthian-help")
 
         # Get dir paths from config vars
         data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
@@ -296,14 +296,31 @@ class DashboardHandler(ZynthianBasicHandler):
         super().get("dashboard_block.html", "Dashboard", config, None)
 
     @staticmethod
-    def get_git_info(path, check_updates=False):
-        branch = check_output(f"cd {path}; git branch | grep '*'", shell=True).decode()[2:-1]
-        gitid = check_output(f"cd {path}; git rev-parse HEAD", shell=True).decode()[:-1]
-        if check_updates:
-            update = check_output(f"cd {path}; git remote update; git status --porcelain -bs | grep behind | wc -l", shell=True).decode()
-        else:
-            update = None
-        return {"branch": branch, "gitid": gitid, "update": update}
+    def get_git_info(path, package=None, check_updates=False):
+        """Branch and commit of a git checkout; for installed packages (not a checkout, e.g. on
+        Nura) the package's version as "branch" and no commit"""
+        if os.path.isdir(f"{path}/.git") or os.path.isfile(f"{path}/.git"):
+            try:
+                branch = check_output(f"cd {path}; git branch | grep '*'", shell=True).decode()[2:-1]
+                gitid = check_output(f"cd {path}; git rev-parse HEAD", shell=True).decode()[:-1]
+                if check_updates:
+                    update = check_output(f"cd {path}; git remote update; git status --porcelain -bs | grep behind | wc -l", shell=True).decode()
+                else:
+                    update = None
+                return {"branch": branch, "gitid": gitid, "update": update}
+            except Exception as e:
+                logging.warning(f"Can't get git info of {path}: {e}")
+        version = ""
+        for name in ([package] if package else []):
+            for p in ([name, "zynthian-ui-tomita", "zynthian-ui-vangelis"] if name == "zynthian-ui" else [name]):
+                try:
+                    out = check_output(["apk", "info", "-e", "-v", p], stderr=DEVNULL).decode().strip()
+                except Exception:
+                    out = ""
+                if out:
+                    version = out
+                    break
+        return {"branch": version or "not a git checkout", "gitid": "", "update": None}
 
     @staticmethod
     def get_host_name():
@@ -496,7 +513,7 @@ class DashboardHandler(ZynthianBasicHandler):
 
     @staticmethod
     def bool2onoff(b):
-        if (isinstance(b, str) and util.strtobool(b)) or (isinstance(b, bool) and b):
+        if (isinstance(b, str) and b.strip().lower() in ('y', 'yes', 't', 'true', 'on', '1')) or (isinstance(b, bool) and b):
             return "On"
         else:
             return "Off"

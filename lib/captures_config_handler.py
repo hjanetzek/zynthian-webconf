@@ -43,7 +43,7 @@ from lib.zynthian_config_handler import ZynthianBasicHandler
 
 
 class CapturesConfigHandler(ZynthianBasicHandler):
-    CAPTURES_DIRECTORY = "/zynthian/zynthian-my-data/capture"
+    CAPTURES_DIRECTORY = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 
     selectedTreeNode = 0
     selected_full_path = ''

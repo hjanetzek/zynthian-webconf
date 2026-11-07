@@ -40,8 +40,8 @@ from lib.zynthian_websocket_handler import ZynthianWebSocketMessageHandler, Zynt
 # ------------------------------------------------------------------------------
 class SystemBackupHandler(ZynthianBasicHandler):
 
-    CONFIG_BACKUP_ITEMS_FILE = "/zynthian/config/config_backup_items.txt"
-    DATA_BACKUP_ITEMS_FILE = "/zynthian/config/data_backup_items.txt"
+    CONFIG_BACKUP_ITEMS_FILE = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config") + "/config_backup_items.txt"
+    DATA_BACKUP_ITEMS_FILE = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config") + "/data_backup_items.txt"
     EXCLUDE_SUFFIX = ".exclude"
 
     @staticmethod
