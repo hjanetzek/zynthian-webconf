@@ -60,7 +60,12 @@ class MackiecontrolHandler(ZynthianConfigHandler):
         if config_template:
             if config_template in templates:
                 mackie_config_file = f"{template_path}/{config_template}"
+        elif not os.path.isfile(mackie_config_file):
+            # Not configured yet: the default template, as the driver does
+            mackie_config_file = f"{template_path}/mackiecontrol.yaml"
 
+        if errors is None:
+            errors = []
         try:
             with open(mackie_config_file, 'r') as f:
                 data = yaml.safe_load(f)

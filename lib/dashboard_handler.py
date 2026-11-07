@@ -72,7 +72,7 @@ class DashboardHandler(ZynthianBasicHandler):
                 'icon': 'glyphicon glyphicon-cog',
                         'info': {
                             'RBPI_VERSION': {
-                                'title': os.environ.get('RBPI_VERSION')
+                                'title': os.environ.get('RBPI_VERSION') or self.get_board_model()
                             },
                             'SOUNDCARD_NAME': {
                                 'title': 'Audio',
@@ -354,13 +354,30 @@ class DashboardHandler(ZynthianBasicHandler):
         return info
 
     @staticmethod
+    def get_board_model():
+        """The machine's model where RBPI_VERSION isn't set (not a Raspberry Pi with ZynthianOS):
+        the device tree's model (ARM boards, tablets) or the DMI product name (PCs)"""
+        for fpath in ("/proc/device-tree/model", "/sys/class/dmi/id/product_name"):
+            try:
+                with open(fpath) as f:
+                    model = f.read().strip("\x00\n ")
+                if model:
+                    return model
+            except OSError:
+                pass
+        return "Unknown machine"
+
+    @staticmethod
     def get_ip():
-        # out=check_output("hostname -I | cut -f1 -d' '", shell=True).decode()
+        # IPv4 addresses of the network interfaces, without loopback ("hostname -I" is Debian's
+        # hostname only: not in BusyBox, Arch, ...)
+        import psutil
+        import socket
         ips = []
-        for ip in check_output("hostname -I", shell=True).decode().split(" "):
-            # Filter ip6 addresses
-            if '.' in ip:
-                ips.append(ip)
+        for name, addrs in psutil.net_if_addrs().items():
+            for addr in addrs:
+                if addr.family == socket.AF_INET and not addr.address.startswith("127."):
+                    ips.append(addr.address)
         return " ".join(ips)
 
     @staticmethod

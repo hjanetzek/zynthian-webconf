@@ -325,6 +325,10 @@ class AudioConfigHandler(ZynthianConfigHandler):
 
         config = {}
 
+        # Defaults, also when JACKD_OPTIONS has no ALSA backend (pipewire-jack: no jackd options)
+        device, samplerate, num_frames, num_periods = "hw:0", "48000", "1024", "2"
+        mode_soft = mode_16 = "0"
+        latency = 1000 * int(num_periods) * int(num_frames) / int(samplerate)
         try:
             jackd_options = os.environ.get('JACKD_OPTIONS', "-P 70 -t 2000 -s -d alsa -d hw:0 -r 48000 -p 256 -n 2")
             alsa_config = re.split(r"-d\salsa", jackd_options)[1] + " "
