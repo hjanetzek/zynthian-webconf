@@ -1,0 +1,14 @@
+# zynthian-webconf as a systemd user service: it runs in the device user's session (the kiosk's on
+# Nura, which logs in at boot), as that user, so it reads the user's zynthian configuration and
+# can reboot or power off through logind. Enabled for all users by the package.
+[Unit]
+Description=zynthian web configuration (zynthian-webconf)
+After=pipewire.service
+
+[Service]
+ExecStart=/usr/share/zynthian/zynthian-webconf/zynthian_webconf.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
