@@ -26,9 +26,9 @@ import os
 import copy
 import glob
 import shutil
+from subprocess import check_output
 import logging
 import zipfile
-import py7zr
 import rarfile
 import certifi
 
@@ -286,8 +286,14 @@ class PresetsConfigHandler(ZynthianBasicHandler):
                     soundfontZip.extractall(dpath)
             elif fpath.endswith('.7z'):
                 dpath = fpath[:-3]
-                with py7zr.SevenZipFile(fpath, 'r') as sz:
-                    sz.extractall(dpath)
+                # py7zr (ZynthianOS) or the 7z program (py7zr needs five native extensions)
+                try:
+                    import py7zr
+                except ImportError:
+                    check_output(["7z", "x", "-y", f"-o{dpath}", fpath])
+                else:
+                    with py7zr.SevenZipFile(fpath, 'r') as sz:
+                        sz.extractall(dpath)
             elif fpath.endswith('.rar'):
                 dpath = fpath[:-4]
                 with rarfile.RarFile(fpath) as rf:
