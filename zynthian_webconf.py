@@ -216,10 +216,12 @@ def make_app():
 async def amain():
     app = make_app()
     app.listen(os.environ.get('ZYNTHIAN_WEBCONF_PORT', 80), max_body_size=MAX_STREAMED_SIZE)
-    app.listen(443, max_body_size=MAX_STREAMED_SIZE, ssl_options={
-        "certfile": "cert/cert.pem",
-        "keyfile": "cert/key.pem"
-    })
+    # HTTPS where there is a certificate (ZynthianOS creates one); without it HTTP only
+    if os.path.isfile("cert/cert.pem") and os.path.isfile("cert/key.pem"):
+        app.listen(os.environ.get('ZYNTHIAN_WEBCONF_SSL_PORT', 443), max_body_size=MAX_STREAMED_SIZE, ssl_options={
+            "certfile": "cert/cert.pem",
+            "keyfile": "cert/key.pem"
+        })
     await asyncio.Event().wait()
 
 
