@@ -8,10 +8,11 @@
 # as --src skips $source.
 #
 # Runs as a systemd user service in the device user's session, on port 8080
-# (http://<device>.local:8080, announced with avahi), login with that user's password.
+# (http://<device>.local:8080, announced with avahi, opened in nftables), login with that
+# user's password.
 pkgname=zynthian-webconf
 pkgver=2610_git20261107
-pkgrel=0
+pkgrel=1
 pkgdesc="zynthian synthesizer platform: web configuration"
 url="https://github.com/zynthian/zynthian-webconf"
 arch="noarch"
@@ -43,6 +44,7 @@ source="
 	requirements.txt
 	zynthian-webconf.service
 	zynthian-webconf.avahi
+	zynthian-webconf.nft
 	"
 builddir="$srcdir/$pkgname"
 
@@ -75,9 +77,12 @@ package() {
 	mkdir -p "$pkgdir"/usr/lib/systemd/user/default.target.wants
 	ln -s ../zynthian-webconf.service "$pkgdir"/usr/lib/systemd/user/default.target.wants/zynthian-webconf.service
 	install -Dm644 "$(_recipefile zynthian-webconf.avahi)" "$pkgdir"/etc/avahi/services/zynthian-webconf.service
+	# postmarketOS' nftables firewall drops incoming connections by default: open the port
+	install -Dm644 "$(_recipefile zynthian-webconf.nft)" "$pkgdir"/etc/nftables.d/50_zynthian-webconf.nft
 }
 sha512sums="
 d97a05856b81140437959c3622e793ed9b1de57917c57a5d498cd02050d5d5b2f2a38deed5f67b6cf6d5a19637fb46bceccee10d440c7173db625cdae299351a  requirements.txt
 0260443aa418c4527ea43e01680be6157afa012eda1f0d4f7861c979587860c5f2921384411d0873d9f4ae39c6ccf1403e89dc240df63be051d258d3984e1b2a  zynthian-webconf.service
 c6cf5aa521c78f2694f057443514fa06fa45d5d57a86d3a927ad8585c9b25419dabbd396337f13733c269612e64696710bf48cbef1de0fa59f05df005d9a7834  zynthian-webconf.avahi
+8f120c106c09f3992ea723da81e1abe3f4f1254b42bc41c131de93d28268e10da8160b17ff9a996f3f4a72ea63e52afe609e05b0817d8e616b89215d8f08a664  zynthian-webconf.nft
 "

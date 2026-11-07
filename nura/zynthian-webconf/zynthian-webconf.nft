@@ -1,0 +1,5 @@
+table inet filter {
+	chain input {
+		tcp dport 8080 accept comment "accept zynthian-webconf"
+	}
+}
