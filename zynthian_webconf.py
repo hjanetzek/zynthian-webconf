@@ -215,9 +215,11 @@ def make_app():
 
 async def amain():
     app = make_app()
-    app.listen(os.environ.get('ZYNTHIAN_WEBCONF_PORT', 80), max_body_size=MAX_STREAMED_SIZE)
+    # ZYNTHIAN_WEBCONF_NO_AUTH=1 (development, login without password): only this machine
+    address = "127.0.0.1" if os.environ.get("ZYNTHIAN_WEBCONF_NO_AUTH") == "1" else ""
+    app.listen(os.environ.get('ZYNTHIAN_WEBCONF_PORT', 80), address=address, max_body_size=MAX_STREAMED_SIZE)
     # HTTPS where there is a certificate (ZynthianOS creates one); without it HTTP only
-    if os.path.isfile("cert/cert.pem") and os.path.isfile("cert/key.pem"):
+    if os.path.isfile("cert/cert.pem") and os.path.isfile("cert/key.pem") and not address:
         app.listen(os.environ.get('ZYNTHIAN_WEBCONF_SSL_PORT', 443), max_body_size=MAX_STREAMED_SIZE, ssl_options={
             "certfile": "cert/cert.pem",
             "keyfile": "cert/key.pem"

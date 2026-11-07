@@ -40,6 +40,10 @@ except ImportError:
 # webconf runs as (the device user on Nura); ZYNTHIAN_WEBCONF_USER to choose another
 LOGIN_USER = os.environ.get("ZYNTHIAN_WEBCONF_USER") or ("root" if os.geteuid() == 0 else getpass.getuser())
 
+# Development: ZYNTHIAN_WEBCONF_NO_AUTH=1 logs in without a password (the server then listens on
+# 127.0.0.1 only, see zynthian_webconf.py)
+NO_AUTH = os.environ.get("ZYNTHIAN_WEBCONF_NO_AUTH") == "1"
+
 # ------------------------------------------------------------------------------
 # Login Handler
 # ------------------------------------------------------------------------------
@@ -48,8 +52,18 @@ LOGIN_USER = os.environ.get("ZYNTHIAN_WEBCONF_USER") or ("root" if os.geteuid() 
 class LoginHandler(tornado.web.RequestHandler):
 
     def get(self, errors=None):
+        if NO_AUTH:
+            self.login()
+            return
         self.render("config.html", info={}, body="login_block.html",
                     title="Login", config=None, errors=errors)
+
+    def login(self):
+        self.set_secure_cookie("user", LOGIN_USER, expires_days=3650)
+        if self.get_argument("next", ""):
+            self.redirect(self.get_argument("next"))
+        else:
+            self.redirect("/")
 
     def post(self):
         password = self.get_argument("PASSWORD")
@@ -63,11 +77,7 @@ class LoginHandler(tornado.web.RequestHandler):
             logging.info(f"Incorrect password => {error}")
             self.get({"PASSWORD": "Incorrect Password"})
             return
-        self.set_secure_cookie("user", LOGIN_USER, expires_days=3650)
-        if self.get_argument("next", ""):
-            self.redirect(self.get_argument("next"))
-        else:
-            self.redirect("/")
+        self.login()
 
     @staticmethod
     def authenticate(user, password):
