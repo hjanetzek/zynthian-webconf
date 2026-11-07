@@ -24,13 +24,13 @@
 
 import os
 import re
-import PAM
 import bcrypt
 import logging
 import tornado.web
 from subprocess import check_output
 
 from lib.zynthian_config_handler import ZynthianConfigHandler
+from lib.login_handler import LoginHandler, LOGIN_USER
 
 # ------------------------------------------------------------------------------
 # System Menu
@@ -115,36 +115,16 @@ class SecurityConfigHandler(ZynthianConfigHandler):
             self.get(errors)
 
     def update_system_config(self, config):
-        # PAM service callback
-        def pam_conv(auth, query_list, userData):
-            resp = []
-            for i in range(len(query_list)):
-                query, type = query_list[i]
-                if type in (PAM.PAM_PROMPT_ECHO_ON, PAM.PAM_PROMPT_ECHO_OFF):
-                    val = passwd
-                    resp.append((val, 0))
-                elif type == PAM.PAM_PROMPT_ERROR_MSG or type == PAM.PAM_PROMPT_TEXT_INFO:
-                    logging.error(query)
-                    resp.append(('', 0))
-                else:
-                    return None
-            return resp
-
         # Check current password
-        auth = PAM.pam()
-        auth.start("passwd")
-        auth.set_item(PAM.PAM_USER, "root")
-        auth.set_item(PAM.PAM_CONV, pam_conv)
+        current_password = self.get_argument("CURRENT_PASSWORD")
         try:
-            passwd = self.get_argument("CURRENT_PASSWORD")
-            auth.authenticate()
-            auth.acct_mgmt()
-        except PAM.error as resp:
-            logging.info(f"Incorrect password => {resp}")
-            return {"CURRENT_PASSWORD": "Incorrect Password"}
+            ok, error = LoginHandler.authenticate(LOGIN_USER, current_password)
         except Exception as e:
             logging.error(e)
             return {"CURRENT_PASSWORD": "Authentication Failure"}
+        if not ok:
+            logging.info(f"Incorrect password => {error}")
+            return {"CURRENT_PASSWORD": "Incorrect Password"}
 
         # Change password
         if len(config['PASSWORD'][0]) > 0:
@@ -168,12 +148,7 @@ class SecurityConfigHandler(ZynthianConfigHandler):
 
             # Change system password (PAM)
             try:
-                passwd = config['PASSWORD'][0]
-                auth.chauthtok()
-                # auth.acct_mgmt()
-            except PAM.error as resp:
-                logging.error(f"Can't set new password! => {resp}")
-                return {'REPEAT_PASSWORD': "Can't set new password for system!"}
+                LoginHandler.change_password(LOGIN_USER, current_password, config['PASSWORD'][0])
             except Exception as e:
                 logging.error(f"Can't set new password! => {e}")
                 return {'REPEAT_PASSWORD': "Can't set new password for system!"}
