@@ -18,6 +18,10 @@ else
 		exit 1
 	fi
 	export ZYNTHIAN_UI_DIR="$ui_dir"
+	# Installed zynthian-ui (packages): its native libraries, as its launcher /usr/bin/zynthian sets
+	if [ "$ui_dir" = /usr/share/zynthian/zynthian-ui ] && [ -d /usr/lib/zynthian ]; then
+		export ZYNTHIAN_LIB_DIR="${ZYNTHIAN_LIB_DIR:-/usr/lib/zynthian}"
+	fi
 	source "$ui_dir/desktop/zynthian_desktop_env.sh"
 	for f in "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh" "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"; do
 		[ -f "$f" ] && source "$f"
