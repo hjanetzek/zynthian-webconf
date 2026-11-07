@@ -23,6 +23,7 @@
 # ********************************************************************
 
 import os
+import threading
 import logging
 import tornado.web
 import pyliblo3 as liblo
@@ -41,6 +42,11 @@ import zyngine.zynthian_lv2 as zynthian_lv2
 # ------------------------------------------------------------------------------
 
 zynthian_ui_osc_addr = liblo.Address('localhost', 1370, liblo.UDP)
+# ZynthianOS runs webconf as root; elsewhere (Nura) it runs as the device user
+running_as_root = os.geteuid() == 0
+# Flag for "update the system configuration" (zynthian-sys): in / on ZynthianOS (root), else in the
+# zynthian configuration directory
+update_sys_flag_fpath = "/zynthian_update_sys" if os.geteuid() == 0 else os.environ.get('ZYNTHIAN_CONFIG_DIR', "/tmp") + "/zynthian_update_sys"
 
 # ------------------------------------------------------------------------------
 # Zynthian Basic Handler
@@ -156,6 +162,10 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
 
     def power_off(self):
         try:
+            if not running_as_root:
+                # Not ZynthianOS: through logind (the UI saves its state when the session ends)
+                check_output(["systemctl", "poweroff"])
+                return
             if self.is_service_active("zynthian"):
                 liblo.send(zynthian_ui_osc_addr, "/CUIA/POWER_OFF", ("s", "CONFIRM"))
                 sleep(5)
@@ -168,6 +178,9 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
             self.reboot_flag = False
             if os.path.isfile(self.reboot_flag_fpath):
                 os.remove(self.reboot_flag_fpath)
+            if not running_as_root:
+                check_output(["systemctl", "reboot"])
+                return
             if self.is_service_active("zynthian"):
                 liblo.send(zynthian_ui_osc_addr, "/CUIA/REBOOT", ("s", "CONFIRM"))
                 sleep(5)
@@ -177,7 +190,12 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
 
     def restart_ui(self):
         try:
-            check_output("systemctl restart zynthian", shell=True)
+            if running_as_root:
+                check_output("systemctl restart zynthian", shell=True)
+            else:
+                # Not ZynthianOS (no zynthian service; on Nura the UI runs in the kiosk session):
+                # the UI restarts itself (its launcher starts it again)
+                liblo.send(zynthian_ui_osc_addr, "/CUIA/RESTART_UI")
             self.restart_ui_flag = False
             if os.path.isfile(self.restart_ui_flag_fpath):
                 os.remove(self.restart_ui_flag_fpath)
@@ -186,7 +204,12 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
 
     def restart_webconf(self):
         try:
-            check_output("systemctl restart zynthian-webconf", shell=True)
+            if running_as_root:
+                check_output("systemctl restart zynthian-webconf", shell=True)
+            else:
+                # As a user service can't restart itself with systemctl: exit after the response,
+                # the service manager starts it again (Restart=always)
+                threading.Timer(1.0, lambda: os._exit(0)).start()
             self.restart_webconf_flag = False
             if os.path.isfile(self.restart_webconf_flag_fpath):
                 os.remove(self.restart_webconf_flag_fpath)
@@ -206,7 +229,7 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
         self.reload_key_binding_flag = False
 
     def persist_update_sys_flag(self):
-        check_output("touch /zynthian_update_sys", shell=True)
+        open(update_sys_flag_fpath, "a").close()
 
     def persist_reboot_flag(self):
         check_output(f"touch {self.reboot_flag_fpath}", shell=True)
@@ -218,8 +241,8 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
     def update_sys(cls):
         try:
             zynconf.update_sys()
-            if os.path.isfile("/zynthian_update_sys"):
-                os.remove("/zynthian_update_sys")
+            if os.path.isfile(update_sys_flag_fpath):
+                os.remove(update_sys_flag_fpath)
         except Exception as e:
             logging.error("Updating System Config: %s" % e)
 
