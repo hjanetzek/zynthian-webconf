@@ -330,7 +330,20 @@ class DashboardHandler(ZynthianBasicHandler):
 
     @staticmethod
     def get_os_info():
-        return check_output("lsb_release -ds", shell=True).decode()
+        # lsb_release (Debian) or os-release's PRETTY_NAME (postmarketOS, Alpine, ... have no
+        # lsb_release)
+        try:
+            return check_output("lsb_release -ds", shell=True, stderr=DEVNULL).decode()
+        except Exception:
+            pass
+        try:
+            with open("/etc/os-release") as f:
+                for line in f:
+                    if line.startswith("PRETTY_NAME="):
+                        return line.split("=", 1)[1].strip().strip('"')
+        except OSError:
+            pass
+        return "Unknown OS"
 
     @staticmethod
     def get_build_info():
