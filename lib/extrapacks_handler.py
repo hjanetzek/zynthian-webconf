@@ -48,7 +48,12 @@ class ExtraPacksHandler(ZynthianBasicHandler):
     my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
     packages_dir = os.environ.get('ZYNTHIAN_DIR', "/zynthian") + "/zynthian-packages"
     installed_packages_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config") + "/packages"
-    collections_dir = data_dir + "/collections"
+    # The packs' system data: zynthian-data, or where that is read-only (distribution packages) the
+    # writable directory zynthian-ui's desktop environment names (ZYNTHIAN_PACKS_DATA_DIR). The pack
+    # scripts install into their $ZYNTHIAN_DATA_DIR: it is set to this one for them.
+    packs_data_dir = os.environ.get('ZYNTHIAN_PACKS_DATA_DIR') or data_dir
+    pack_env = f"ZYNTHIAN_DATA_DIR=\"{packs_data_dir}\" "
+    collections_dir = packs_data_dir + "/collections"
 
     package_info_cache_fpath = "/tmp/package_info.yml"
 
@@ -141,8 +146,8 @@ class ExtraPacksHandler(ZynthianBasicHandler):
                     raise Exception(f"Failed to download/unpack from '{info['pack_url']}'!")
             elif "pack_script" in info and info["pack_script"]:
                 pack_script = info["pack_script"]
-                res = getoutput(f"bash \"{pack_script}\" install")
-                if getoutput(f"bash \"{pack_script}\" installed").split("\n")[0] == "installed":
+                res = getoutput(f"{self.pack_env}bash \"{pack_script}\" install")
+                if getoutput(f"{self.pack_env}bash \"{pack_script}\" installed").split("\n")[0] == "installed":
                     info["installed"] = True
                     info["update"] = False
                     #self.save_cache_packages()
@@ -174,8 +179,8 @@ class ExtraPacksHandler(ZynthianBasicHandler):
                     #self.save_cache_packages()
             elif "pack_script" in info and info["pack_script"]:
                 pack_script = info["pack_script"]
-                res = getoutput(f"bash \"{pack_script}\" uninstall")
-                if getoutput(f"bash \"{pack_script}\" installed").split("\n")[0] == "installed":
+                res = getoutput(f"{self.pack_env}bash \"{pack_script}\" uninstall")
+                if getoutput(f"{self.pack_env}bash \"{pack_script}\" installed").split("\n")[0] == "installed":
                     raise Exception(f"Can't uninstall package!")
                 else:
                     info["installed"] = False
@@ -223,7 +228,7 @@ class ExtraPacksHandler(ZynthianBasicHandler):
                             return False
                     # Else try calling script
                     elif 'pack_script' in info:
-                        available_git_version = getoutput(f"bash \"{info['pack_script']}\" git_version").split("\n")[0]
+                        available_git_version = getoutput(f"{self.pack_env}bash \"{info['pack_script']}\" git_version").split("\n")[0]
                         if available_git_version:
                             if 'git_version' in installed_info and installed_info['git_version'] == available_git_version:
                                 return False
@@ -310,7 +315,7 @@ class ExtraPacksHandler(ZynthianBasicHandler):
                     pack_size_text =  "unknown"
                 if installed is None:
                     # Check if it's installed by running the package script
-                    installed = (getoutput(f"bash \"{pack_script}\" installed").split("\n")[0] == "installed")
+                    installed = (getoutput(f"{self.pack_env}bash \"{pack_script}\" installed").split("\n")[0] == "installed")
                 pack_url = None
             else:
                 # No package script
