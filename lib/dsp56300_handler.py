@@ -46,8 +46,21 @@ class dsp56300Handler(ZynthianBasicHandler):
     data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
     my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
 
-    config_dpath = "/root/.local/share/The Usual Suspects"
-    plugins_dpath = "/usr/local/lib/lv2"
+    # gearmulator's data folder: $XDG_DATA_HOME (default ~/.local/share) of the user zynthian runs
+    # as; on ZynthianOS that is /root/.local/share
+    config_dpath = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"),
+                                "The Usual Suspects")
+    # LV2 directories with the plugin bundles (ZynthianOS: /usr/local/lib/lv2; packages: /usr/lib/lv2)
+    plugins_dpaths = ["/usr/local/lib/lv2", "/usr/lib/lv2",
+                      os.path.join(os.environ.get("ZYNTHIAN_PLUGINS_DIR", "/zynthian/zynthian-plugins"), "lv2"),
+                      os.path.expanduser("~/.lv2")]
+
+    def get_plugin_bundle_dpath(self, gear_name):
+        for dpath in self.plugins_dpaths:
+            bundle_dpath = f"{dpath}/{gear_name}.lv2"
+            if os.path.isdir(bundle_dpath):
+                return bundle_dpath
+        return None
     gear_info = {
         "Osirus": "http://theusualsuspects.lv2/Osirus",
         "OsTIrus": "http://theusualsuspects.lv2/OsTIrus",
@@ -85,8 +98,8 @@ class dsp56300Handler(ZynthianBasicHandler):
         self.get(errors)
 
     def do_install_romfile(self, gear_name):
-        plugin_bundle_dpath = self.plugins_dpath + "/" + gear_name + ".lv2"
-        if not os.path.isdir(plugin_bundle_dpath):
+        plugin_bundle_dpath = self.get_plugin_bundle_dpath(gear_name)
+        if not plugin_bundle_dpath:
             errors = f"Can't find a LV2 bundle dir for device '{gear_name}'"
             logging.error(errors)
             return errors
@@ -108,9 +121,10 @@ class dsp56300Handler(ZynthianBasicHandler):
         if fpath:
             logging.info(f"Installing ROM file {fpath} ...")
             try:
-                # Remove existing ROM files
-                logging.info(f"Remove existing ROM files from {plugin_bundle_dpath} ...")
-                res = check_output(f"cd \"{plugin_bundle_dpath}\"; rm -f *.bin; rm -f *.BIN", shell=True, stderr=STDOUT).decode("utf-8")
+                # Remove existing ROM files (only from a bundle we may write to: a packaged one has none)
+                if os.access(plugin_bundle_dpath, os.W_OK):
+                    logging.info(f"Remove existing ROM files from {plugin_bundle_dpath} ...")
+                    res = check_output(f"cd \"{plugin_bundle_dpath}\"; rm -f *.bin; rm -f *.BIN", shell=True, stderr=STDOUT).decode("utf-8")
                 if gear_name != "Xenia":
                     logging.info(f"Remove existing ROM files from {roms_dpath} ...")
                     res = check_output(f"cd \"{roms_dpath}\"; rm -f *.bin; rm -f *.BIN; rm -f *.mid; rm -f *.MID", shell=True, stderr=STDOUT).decode("utf-8")
@@ -158,7 +172,9 @@ class dsp56300Handler(ZynthianBasicHandler):
         }
         for gname in self.gear_info:
             flist = self.get_rom_files(self.config_dpath + "/" + gname + "/roms")
-            flist += self.get_rom_files(self.plugins_dpath + "/" + gname + ".lv2")
+            bundle_dpath = self.get_plugin_bundle_dpath(gname)
+            if bundle_dpath:
+                flist += self.get_rom_files(bundle_dpath)
             if len(flist) > 0:
                 config[f"ZYNTHIAN_DSP56300_ROM_FILE_{gname.upper()}"] = ", ".join(flist)
             else:
@@ -179,7 +195,11 @@ class dsp56300Handler(ZynthianBasicHandler):
             proc.delaybeforesend = 0
             proc.expect("\n> ")
             proc.terminate(True)
-            res = check_output(f"regenerate_lv2_presets.sh {plugin_uri}", shell=True, stderr=STDOUT).decode("utf-8")
+            if shutil.which("regenerate_lv2_presets.sh"):
+                res = check_output(f"regenerate_lv2_presets.sh {plugin_uri}", shell=True, stderr=STDOUT).decode("utf-8")
+            else:
+                # without zynthian-sys (packages): what the script does for these plugins
+                zynthian_lv2.generate_plugin_presets_cache(plugin_uri, False)
         except Exception as e:
             errors = f"Can't generate presets for '{plugin_uri}': {e}"
             logging.error(errors)
