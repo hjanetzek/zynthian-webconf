@@ -39,6 +39,10 @@ from terminado import TermSocket, SingleTermManager
 sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 from zyncoder.zyncore import lib_zyncore_init_minimal
 lib_zyncore_init_minimal()
+# zynthian-ui before 61f45e0d: the state manager must come before the chain manager and the
+# legacy snapshot module (import cycle); zynthian_gui, which webconf no longer imports for the
+# CUIA list, used to load it first
+import zyngine.zynthian_state_manager
 
 from lib.zynterm_handler import ZyntermHandler
 from lib.zynremote_handler import ZynremoteConfigHandler, ZynremoteUIWebSocketBridge, ZynremoteVNCBridge, ZynremoteAudioProxy
