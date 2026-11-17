@@ -32,7 +32,7 @@ from lib.dashboard_handler import DashboardHandler
 from lib.zynthian_config_handler import ZynthianConfigHandler
 
 from zynconf import CustomSwitchActionType, ZynSensorActionType
-from zyngui.zynthian_gui import zynthian_gui
+from lib.cuia_list import get_cuia_list
 
 # ------------------------------------------------------------------------------
 # Autodetect I2C chips
@@ -834,7 +834,7 @@ class WiringConfigHandler(ZynthianConfigHandler):
         div_class2 = "col-sm-2 col-xs-9 col-fixheight col-thin-padding-extra"
         div_class2x = "col-sm-1 col-xs-3 col-fixheight col-extra"
 
-        cuia_list = [""] + zynthian_gui.get_cuia_list()
+        cuia_list = [""] + get_cuia_list()
         cvgate_in = []
         cvgate_out = []
         if self.n_custom_switches > 0:

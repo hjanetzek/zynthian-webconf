@@ -27,7 +27,7 @@ import tornado.web
 
 from lib.zynthian_config_handler import ZynthianBasicHandler
 
-from zyngui.zynthian_gui import zynthian_gui
+from lib.cuia_list import get_cuia_list
 from zyngui import zynthian_gui_keybinding
 
 # ------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class UiKeybindHandler(ZynthianBasicHandler):
     def get(self, errors=None):
         config = {}
         config["bindings"] = zynthian_gui_keybinding.get_html_map()
-        config["cuias"] = zynthian_gui.get_cuia_list()
+        config["cuias"] = get_cuia_list()
         config["keys"] = zynthian_gui_keybinding.html2tk
 
         super().get("ui_keybind.html", "Keyboard Binding", config, errors)

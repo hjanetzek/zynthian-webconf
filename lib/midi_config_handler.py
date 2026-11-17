@@ -32,7 +32,7 @@ from shutil import copyfile
 from lib.zynthian_config_handler import ZynthianConfigHandler
 
 import zynconf
-from zyngui.zynthian_gui import zynthian_gui
+from lib.cuia_list import get_cuia_list
 from zyngine.zynthian_midi_filter import MidiFilterScript
 
 # ------------------------------------------------------------------------------
@@ -359,7 +359,7 @@ class MidiConfigHandler(ZynthianConfigHandler):
             }
         }
 
-        cuia_list = [""] + zynthian_gui.get_cuia_list()
+        cuia_list = [""] + get_cuia_list()
         current_note_cuia_text = self.get_midi_env(
             'ZYNTHIAN_MIDI_MASTER_NOTE_CUIA', '')
         if current_note_cuia_text:
