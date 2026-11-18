@@ -293,6 +293,14 @@ class DashboardHandler(ZynthianBasicHandler):
                 'url': "/ui-midi-options"
             }
 
+        # Values that aren't there on this system (no zynthian kit: no SOUNDCARD_NAME/DISPLAY_NAME/
+        # wiring layout; no systemctl, vcgencmd or i2cdetect on OpenRC phones) are None, which the
+        # template can't escape (500 on the dashboard): shown as "-"
+        for block in config.values():
+            for item in block.get('info', {}).values():
+                if item.get('value') is None:
+                    item['value'] = "-"
+
         super().get("dashboard_block.html", "Dashboard", config, None)
 
     @staticmethod
