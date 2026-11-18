@@ -1,0 +1,33 @@
+#!/sbin/openrc-run
+# zynthian-webconf on OpenRC (e.g. the Galaxy S III Neo): the same program as the systemd user
+# service, run by supervise-daemon as the device user, so it reads that user's zynthian
+# configuration. Not started at boot by the package: "rc-service zynthian-webconf start", or
+# "rc-update add zynthian-webconf" for every boot. Port 8080; settings in
+# /etc/conf.d/zynthian-webconf.
+description="zynthian web configuration (zynthian-webconf)"
+supervisor=supervise-daemon
+command=/usr/share/zynthian/zynthian-webconf/zynthian_webconf.sh
+respawn_delay=5
+respawn_max=5
+: "${ZYNTHIAN_USER:=$(getent passwd 10000 | cut -d: -f1)}"
+command_user="$ZYNTHIAN_USER"
+output_log=/var/log/zynthian-webconf.log
+error_log=/var/log/zynthian-webconf.log
+
+depend() {
+	need net
+	after s3ve3g-zynthian avahi-daemon
+}
+
+start_pre() {
+	if [ -z "$ZYNTHIAN_USER" ]; then
+		eerror "no user for zynthian-webconf (ZYNTHIAN_USER in /etc/conf.d/zynthian-webconf)"
+		return 1
+	fi
+	local home
+	home=$(getent passwd "$ZYNTHIAN_USER" | cut -d: -f6)
+	export HOME="$home" USER="$ZYNTHIAN_USER" LOGNAME="$ZYNTHIAN_USER"
+	export XDG_RUNTIME_DIR="/tmp/runtime-$ZYNTHIAN_USER"
+	checkpath -d -m 0700 -o "$ZYNTHIAN_USER" "$XDG_RUNTIME_DIR"
+	checkpath -f -m 0644 -o "$ZYNTHIAN_USER" /var/log/zynthian-webconf.log
+}

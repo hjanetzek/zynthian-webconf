@@ -1,0 +1,3 @@
+# zynthian-webconf (OpenRC): the user it runs as (default: the device's user, uid 10000); its
+# zynthian configuration and data are that user's (~/.config/zynthian, ~/.local/share/zynthian)
+#ZYNTHIAN_USER=user
